@@ -2313,7 +2313,6 @@ source = "git+https://github.com/typst/subsetter?rev=4e0058b#4e0058b4b9a0948a5f7
 [[package]]
 name = "svg2pdf"
 version = "0.11.0"
-source = "git+https://github.com/typst/svg2pdf?rev=39f8ad3#39f8ad3b35e14cfcabf3d5d916899f7ac78790f7"
 dependencies = [
  "fontdb",
  "image",
@@ -2326,7 +2325,6 @@ dependencies = [
  "subsetter",
  "tiny-skia",
  "ttf-parser",
- "unicode-properties",
  "usvg",
 ]
 

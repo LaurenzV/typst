@@ -8,22 +8,19 @@ pub use self::svg::SvgImage;
 
 use std::ffi::OsStr;
 use std::fmt::{self, Debug, Formatter};
+use std::ops::Neg;
 use std::sync::Arc;
 
 use comemo::Tracked;
 use ecow::EcoString;
-
+use usvg::{Node, TextAnchor, Transform};
+use typst::eval::EvalMode;
 use crate::diag::{bail, At, SourceResult, StrResult};
 use crate::engine::Engine;
-use crate::foundations::{
-    cast, elem, func, scope, Bytes, Cast, Content, NativeElement, Packed, Show, Smart,
-    StyleChain,
-};
+use crate::eval::eval_string;
+use crate::foundations::{cast, elem, func, scope, Bytes, Cast, Content, NativeElement, Packed, Show, Smart, StyleChain, Scope};
 use crate::introspection::Locator;
-use crate::layout::{
-    Abs, Axes, BlockElem, FixedAlignment, Frame, FrameItem, Length, Point, Region, Rel,
-    Size,
-};
+use crate::layout::{Abs, Axes, BlockElem, FixedAlignment, Frame, FrameItem, GroupItem, Length, Point, Region, Regions, Rel, Size};
 use crate::loading::Readable;
 use crate::model::Figurable;
 use crate::syntax::{Span, Spanned};
@@ -245,11 +242,57 @@ fn layout_image(
         ImageFit::Stretch => target,
     };
 
+
     // First, place the image in a frame of exactly its size and then resize
     // the frame to the target size, center aligning the image in the
     // process.
     let mut frame = Frame::soft(fitted);
-    frame.push(Point::zero(), FrameItem::Image(image, fitted, span));
+    frame.push(Point::zero(), FrameItem::Image(image.clone(), fitted, span));
+
+    if let ImageKind::Svg(svg) = image.kind() {
+        fn traverse(svg: &SvgImage, group: &usvg::Group, image_size: Size, engine: &mut Engine, span: Span, styles: StyleChain, parent_frame: &mut Frame) -> Option<()> {
+            for child in group.children() {
+                match child {
+                    Node::Group(g) => {
+                        traverse(svg, g, image_size, engine, span, styles, parent_frame);
+                    },
+                    Node::Text(t) => {
+                        for chunk in t.chunks() {
+                            let mut x = chunk.x().unwrap_or(0.0);
+                            let y = chunk.y().unwrap_or(0.0);
+                            let val = eval_string(engine.world, &chunk.text(), span, EvalMode::Markup, Scope::new()).unwrap().display();
+
+                            let locator = Locator::root();
+                            let pod = Regions::one(Size::new(Abs::inf(), Abs::inf()), Axes::splat(false));
+                            let f = val.layout(engine, locator, styles, pod).ok()?.into_frame();
+
+                            x = match chunk.anchor() {
+                                TextAnchor::Start => x,
+                                TextAnchor::Middle => x - (f.size().x.to_raw() / 2.0) as f32,
+                                TextAnchor::End => x - f.size().x.to_raw() as f32
+                            };
+
+                            let baseline = f.baseline();
+                            let mut text_frame = GroupItem::new(f);
+
+                            let transform = t.abs_transform()
+                                .pre_concat(Transform::from_translate(x, y))
+                                .post_concat(Transform::from_translate(0.0, baseline.neg().to_raw() as f32))
+                                .post_concat(Transform::from_scale(image_size.x.to_raw() as f32 / svg.tree().size().width(), image_size.y.to_raw() as f32 / svg.tree().size().height()));
+
+                            text_frame.transform = transform.into();
+                            parent_frame.push(Point::zero(), FrameItem::Group(text_frame));
+                        }
+                    },
+                    _ => {}
+                }
+            }
+
+            None
+        }
+
+        traverse(svg, svg.tree().root(), fitted, engine, span, styles, &mut frame);
+    }
     frame.resize(target, Axes::splat(FixedAlignment::Center));
 
     // Create a clipping group if only part of the image should be visible.
