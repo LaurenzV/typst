@@ -32,6 +32,7 @@ svg2pdf = { workspace = true }
 ttf-parser = { workspace = true }
 unscanny = { workspace = true }
 xmp-writer = { workspace = true }
+krilla = {path = "../../../krilla"}
 
 [lints]
 workspace = true

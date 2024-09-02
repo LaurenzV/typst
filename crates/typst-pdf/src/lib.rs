@@ -13,6 +13,7 @@ mod outline;
 mod page;
 mod pattern;
 mod resources;
+mod krilla;
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -70,6 +71,8 @@ pub fn pdf(
     timestamp: Option<Datetime>,
     page_ranges: Option<PageRanges>,
 ) -> Vec<u8> {
+    println!("reached");
+    return krilla::pdf(document);
     PdfBuilder::new(document, page_ranges)
         .phase(|builder| builder.run(traverse_pages))
         .phase(|builder| GlobalRefs {

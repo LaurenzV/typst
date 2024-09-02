@@ -228,6 +228,20 @@ name = "bytemuck"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fd4c6dcc3b0aea2f5c0b4b82c2b15fe39ddbc76041a310848f4706edf76bb31"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc8b54b395f2fcfbb3d90c47b01c7f444d94d05bdeb775811dec868ac3bbc26"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "byteorder"
@@ -734,12 +748,24 @@ name = "float-cmp"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "font-types"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3ade9a548352698c7f1e340fd5caf76b9f06c0b587e6b4840ea077e1524c685"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "fontconfig-parser"
@@ -1252,6 +1278,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "krilla"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "float-cmp",
+ "fontdb",
+ "gif",
+ "image-webp",
+ "miniz_oxide 0.8.0",
+ "once_cell",
+ "pdf-writer 0.10.0 (git+https://github.com/LaurenzV/pdf-writer?rev=34c991f5)",
+ "resvg",
+ "rustybuzz",
+ "siphasher 1.0.1",
+ "skrifa",
+ "subsetter 0.11.0 (git+https://github.com/typst/subsetter/?rev=67bde74)",
+ "tiny-skia",
+ "tiny-skia-path",
+ "usvg",
+ "yoke",
+ "zune-jpeg",
+ "zune-png",
+]
+
+[[package]]
 name = "kurbo"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1692,6 +1743,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdf-writer"
+version = "0.10.0"
+source = "git+https://github.com/LaurenzV/pdf-writer?rev=34c991f5#34c991f58cb4e3a29ef79edad0337435e9cecc6c"
+dependencies = [
+ "bitflags 2.6.0",
+ "itoa",
+ "memchr",
+ "ryu",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1938,6 +2000,16 @@ checksum = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "read-fonts"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5baa1d3f6c6449e4299e17814855468617c2924753ce4f0601b16cba9f8e7bd8"
+dependencies = [
+ "bytemuck",
+ "font-types",
 ]
 
 [[package]]
@@ -2255,6 +2327,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 
 [[package]]
+name = "skrifa"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a49b2de0351f3b8c6dc852c83be4b5a0095e607a29c5731597c0204ed5ec78e"
+dependencies = [
+ "bytemuck",
+ "read-fonts",
+]
+
+[[package]]
 name = "slotmap"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2348,6 +2430,11 @@ version = "0.11.0"
 source = "git+https://github.com/typst/subsetter?rev=4e0058b#4e0058b4b9a0948a5f79894111948d95e59ba350"
 
 [[package]]
+name = "subsetter"
+version = "0.11.0"
+source = "git+https://github.com/typst/subsetter/?rev=67bde74#67bde74c76a3d3a27b4f4f3f62cfc553ce965443"
+
+[[package]]
 name = "svg2pdf"
 version = "0.11.0"
 source = "git+https://github.com/typst/svg2pdf?rev=5963e1e#5963e1e890ac89fbf6b4750b3470ebd5765ef606"
@@ -2357,10 +2444,10 @@ dependencies = [
  "log",
  "miniz_oxide 0.8.0",
  "once_cell",
- "pdf-writer",
+ "pdf-writer 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "resvg",
  "siphasher 1.0.1",
- "subsetter",
+ "subsetter 0.11.0 (git+https://github.com/typst/subsetter?rev=4e0058b)",
  "tiny-skia",
  "ttf-parser",
  "usvg",
@@ -2838,10 +2925,11 @@ dependencies = [
  "ecow",
  "image",
  "indexmap 2.4.0",
+ "krilla",
  "miniz_oxide 0.8.0",
  "once_cell",
- "pdf-writer",
- "subsetter",
+ "pdf-writer 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "subsetter 0.11.0 (git+https://github.com/typst/subsetter?rev=4e0058b)",
  "svg2pdf",
  "ttf-parser",
  "typst",
@@ -3647,10 +3735,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f423a2c17029964870cfaabb1f13dfab7d092a62a29a89264f4d36990ca414a"
 
 [[package]]
+name = "zune-inflate"
+version = "0.2.54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73ab332fe2f6680068f3582b16a24f90ad7096d5d39b974d1c0aff0125116f02"
+dependencies = [
+ "simd-adler32",
+]
+
+[[package]]
 name = "zune-jpeg"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "16099418600b4d8f028622f73ff6e3deaabdff330fb9a2a131dea781ee8b0768"
 dependencies = [
  "zune-core",
+]
+
+[[package]]
+name = "zune-png"
+version = "0.4.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d29c085769c6f29effea890f093120ac019375fdc789d2a496ba8ba96c77509"
+dependencies = [
+ "zune-core",
+ "zune-inflate",
 ]
