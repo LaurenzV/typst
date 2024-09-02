@@ -7,10 +7,10 @@ use krilla::PageSettings;
 use krilla::path::{Fill, Stroke};
 use krilla::surface::Surface;
 use typst::foundations::{Datetime, Smart};
-use typst::layout::{Frame, FrameItem, PageRanges};
+use typst::layout::{Frame, FrameItem, GroupItem, PageRanges, Size};
 use typst::model::Document;
-use typst::text::Font;
-use typst::visualize::{ColorSpace, ImageKind, Paint, RasterFormat, Rgb};
+use typst::text::{Font, TextItem};
+use typst::visualize::{ColorSpace, Image, ImageKind, Paint, RasterFormat, Rgb};
 use crate::page::{alloc_page_refs, traverse_pages, write_page_tree};
 use crate::{AbsExt, GlobalRefs, PdfBuilder, References};
 use crate::catalog::write_catalog;
@@ -52,78 +52,84 @@ pub fn pdf(
     document.finish().unwrap()
 }
 
+pub fn handle_group(group: &GroupItem, surface: &mut Surface, context: &mut ExportContext) {
+    surface.push_transform(&convert_transform(group.transform));
+    handle_frame(&g.frame, surface, context);
+    surface.pop();
+}
+
+pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportContext) {
+    let font = context.fonts.entry(t.font.clone()).or_insert_with(|| {
+        krilla::font::Font::new(Arc::new(t.font.data().to_vec()), t.font.index(), vec![]).unwrap()
+    }).clone();
+    let paint = convert_paint(&t.fill);
+    let fill = Fill {
+        paint,
+        ..Default::default()
+    };
+    let text = t.text.as_str();
+    let size = t.size;
+
+    let glyphs = t.glyphs.iter().map(|g| {
+        krilla::font::Glyph::new(
+            GlyphId::new(g.id as u32),
+            g.x_advance.at(size).to_f32(),
+            g.x_offset.at(size).to_f32(),
+            0.0,
+            g.range.start as usize..g.range.end as usize,
+            size.to_f32()
+        )
+    }).collect::<Vec<_>>();
+
+    surface.fill_glyphs(
+        Point::from_xy(0.0, 0.0),
+        fill,
+        &glyphs,
+        font.clone(),
+        text
+    );
+
+    if let Some(stroke) = &t.stroke {
+        let krilla_stroke = Stroke {
+            paint: convert_paint(&stroke.paint),
+            width: stroke.thickness.to_f32(),
+            miter_limit: stroke.miter_limit.get() as f32,
+            ..Default::default()
+        };
+
+        surface.stroke_glyphs(
+            Point::from_xy(0.0, 0.0),
+            krilla_stroke,
+            &glyphs,
+            font.clone(),
+            text
+        );
+    }
+}
+
+pub fn handle_image(image: &Image, size: &Size, surface: &mut Surface, _: &mut ExportContext) {
+    // match image.kind() {
+    //     ImageKind::Raster(raster) => {
+    //         let image = match raster.format() {
+    //             RasterFormat::Png => krilla::image::Image::from_png(raster.data()),
+    //             RasterFormat::Jpg => krilla::image::Image::from_jpeg(raster.data()),
+    //             RasterFormat::Gif => krilla::image::Image::from_gif(raster.data()),
+    //         }.unwrap();
+    //         surface.draw_image(image, krilla::geom::Size::from_wh(size.x.to_f32(), size.y.to_f32()).unwrap());
+    //     }
+    //     ImageKind::Svg(_) => {}
+    // }
+}
+
 pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportContext) {
     for (point, item) in frame.items() {
         surface.push_transform(&Transform::from_translate(point.x.to_f32(), point.y.to_f32()));
 
         match item {
-            FrameItem::Group(g) => {
-                surface.push_transform(&convert_transform(g.transform));
-                handle_frame(&g.frame, surface, context);
-                surface.pop();
-            }
-            FrameItem::Text(t) => {
-                let font = context.fonts.entry(t.font.clone()).or_insert_with(|| {
-                    krilla::font::Font::new(Arc::new(t.font.data().to_vec()), t.font.index(), vec![]).unwrap()
-                }).clone();
-                let paint = convert_paint(&t.fill);
-                let fill = Fill {
-                    paint,
-                    ..Default::default()
-                };
-                let text = t.text.as_str();
-                let size = t.size;
-
-                let glyphs = t.glyphs.iter().map(|g| {
-                    krilla::font::Glyph::new(
-                        GlyphId::new(g.id as u32),
-                        g.x_advance.at(size).to_f32(),
-                        g.x_offset.at(size).to_f32(),
-                        0.0,
-                        g.range.start as usize..g.range.end as usize,
-                        size.to_f32()
-                    )
-                }).collect::<Vec<_>>();
-
-                surface.fill_glyphs(
-                    Point::from_xy(0.0, 0.0),
-                    fill,
-                    &glyphs,
-                    font.clone(),
-                    text
-                );
-
-                if let Some(stroke) = &t.stroke {
-                    let krilla_stroke = Stroke {
-                        paint: convert_paint(&stroke.paint),
-                        width: stroke.thickness.to_f32(),
-                        miter_limit: stroke.miter_limit.get() as f32,
-                        ..Default::default()
-                    };
-
-                    surface.stroke_glyphs(
-                        Point::from_xy(0.0, 0.0),
-                        krilla_stroke,
-                        &glyphs,
-                        font.clone(),
-                        text
-                    );
-                }
-            }
+            FrameItem::Group(g) => handle_group(g, surface, context),
+            FrameItem::Text(t) => handle_text(t, surface, context),
             FrameItem::Shape(_, _) => {}
-            FrameItem::Image(image, size, span) => {
-                match image.kind() {
-                    ImageKind::Raster(raster) => {
-                        let image = match raster.format() {
-                            RasterFormat::Png => krilla::image::Image::from_png(raster.data()),
-                            RasterFormat::Jpg => krilla::image::Image::from_jpeg(raster.data()),
-                            RasterFormat::Gif => krilla::image::Image::from_gif(raster.data()),
-                        }.unwrap();
-                        surface.draw_image(image, krilla::geom::Size::from_wh(size.x.to_f32(), size.y.to_f32()).unwrap());
-                    }
-                    ImageKind::Svg(_) => {}
-                }
-            }
+            FrameItem::Image(image, size, span) => handle_image(image, size surface, context),
             FrameItem::Link(_, _) => {}
             FrameItem::Tag(_) => {}
         }
