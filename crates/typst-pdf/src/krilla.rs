@@ -54,7 +54,7 @@ pub fn pdf(
 
 pub fn handle_group(group: &GroupItem, surface: &mut Surface, context: &mut ExportContext) {
     surface.push_transform(&convert_transform(group.transform));
-    handle_frame(&g.frame, surface, context);
+    handle_frame(&group.frame, surface, context);
     surface.pop();
 }
 
@@ -129,7 +129,7 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
             FrameItem::Group(g) => handle_group(g, surface, context),
             FrameItem::Text(t) => handle_text(t, surface, context),
             FrameItem::Shape(_, _) => {}
-            FrameItem::Image(image, size, span) => handle_image(image, size surface, context),
+            FrameItem::Image(image, size, span) => handle_image(image, size, surface, context),
             FrameItem::Link(_, _) => {}
             FrameItem::Tag(_) => {}
         }
