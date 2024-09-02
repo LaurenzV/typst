@@ -72,7 +72,7 @@ pub fn pdf(
     page_ranges: Option<PageRanges>,
 ) -> Vec<u8> {
     println!("reached");
-    return krilla::pdf(document);
+    // return krilla::pdf(document);
     PdfBuilder::new(document, page_ranges)
         .phase(|builder| builder.run(traverse_pages))
         .phase(|builder| GlobalRefs {

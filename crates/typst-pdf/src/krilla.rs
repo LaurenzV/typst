@@ -108,17 +108,19 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
 }
 
 pub fn handle_image(image: &Image, size: &Size, surface: &mut Surface, _: &mut ExportContext) {
-    // match image.kind() {
-    //     ImageKind::Raster(raster) => {
-    //         let image = match raster.format() {
-    //             RasterFormat::Png => krilla::image::Image::from_png(raster.data()),
-    //             RasterFormat::Jpg => krilla::image::Image::from_jpeg(raster.data()),
-    //             RasterFormat::Gif => krilla::image::Image::from_gif(raster.data()),
-    //         }.unwrap();
-    //         surface.draw_image(image, krilla::geom::Size::from_wh(size.x.to_f32(), size.y.to_f32()).unwrap());
-    //     }
-    //     ImageKind::Svg(_) => {}
-    // }
+    match image.kind() {
+        ImageKind::Raster(raster) => {
+            let image = match raster.format() {
+                RasterFormat::Png => krilla::image::Image::from_png(raster.data()),
+                RasterFormat::Jpg => krilla::image::Image::from_jpeg(raster.data()),
+                RasterFormat::Gif => krilla::image::Image::from_gif(raster.data()),
+            }.unwrap();
+            surface.draw_image(image, krilla::geom::Size::from_wh(size.x.to_f32(), size.y.to_f32()).unwrap());
+        }
+        ImageKind::Svg(svg) => {
+            surface.draw_svg(svg.tree(), krilla::geom::Size::from_wh(size.x.to_f32(), size.y.to_f32()).unwrap())
+        }
+    }
 }
 
 pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportContext) {
