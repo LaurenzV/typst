@@ -10,7 +10,7 @@ use typst::foundations::{Datetime, Smart};
 use typst::layout::{Frame, FrameItem, PageRanges};
 use typst::model::Document;
 use typst::text::Font;
-use typst::visualize::{ColorSpace, Paint, Rgb};
+use typst::visualize::{ColorSpace, ImageKind, Paint, RasterFormat, Rgb};
 use crate::page::{alloc_page_refs, traverse_pages, write_page_tree};
 use crate::{AbsExt, GlobalRefs, PdfBuilder, References};
 use crate::catalog::write_catalog;
@@ -85,7 +85,6 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
                     )
                 }).collect::<Vec<_>>();
 
-                println!("reached2 {:?}", text);
                 surface.fill_glyphs(
                     Point::from_xy(0.0, 0.0),
                     fill,
@@ -112,7 +111,19 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
                 }
             }
             FrameItem::Shape(_, _) => {}
-            FrameItem::Image(_, _, _) => {}
+            FrameItem::Image(image, size, span) => {
+                match image.kind() {
+                    ImageKind::Raster(raster) => {
+                        let image = match raster.format() {
+                            RasterFormat::Png => krilla::image::Image::from_png(raster.data()),
+                            RasterFormat::Jpg => krilla::image::Image::from_jpeg(raster.data()),
+                            RasterFormat::Gif => krilla::image::Image::from_gif(raster.data()),
+                        }.unwrap();
+                        surface.draw_image(image, krilla::geom::Size::from_wh(size.x.to_f32(), size.y.to_f32()).unwrap());
+                    }
+                    ImageKind::Svg(_) => {}
+                }
+            }
             FrameItem::Link(_, _) => {}
             FrameItem::Tag(_) => {}
         }
