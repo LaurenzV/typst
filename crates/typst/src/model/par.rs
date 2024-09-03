@@ -36,7 +36,7 @@ use crate::utils::singleton;
 /// let $a$ be the smallest of the
 /// three integers. Then, we ...
 /// ```
-#[elem(scope, title = "Paragraph", Debug, Construct)]
+#[elem(scope, title = "Paragraph", Debug, Locatable, Construct)]
 pub struct ParElem {
     /// The spacing between lines.
     ///

@@ -84,6 +84,8 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
         )
     }).collect::<Vec<_>>();
 
+    surface.start_marked_content();
+
     surface.fill_glyphs(
         Point::from_xy(0.0, 0.0),
         fill,
@@ -101,6 +103,8 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
             text
         );
     }
+
+    surface.end_marked_content();
 }
 
 pub fn handle_image(image: &Image, size: &Size, surface: &mut Surface, _: &mut ExportContext) {
@@ -183,7 +187,9 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
             FrameItem::Shape(s, _) => handle_shape(s, surface),
             FrameItem::Image(image, size, _) => handle_image(image, size, surface, context),
             FrameItem::Link(_, _) => {}
-            FrameItem::Tag(_) => {}
+            FrameItem::Tag(t) => {
+                println!("{:?}, {:?}", t.kind(), t.elem().func());
+            }
         }
 
         surface.pop();
