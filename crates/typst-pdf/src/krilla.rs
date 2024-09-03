@@ -80,18 +80,16 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
             g.x_offset.at(size).to_f32(),
             0.0,
             g.range.start as usize..g.range.end as usize,
-            size.to_f32()
         )
     }).collect::<Vec<_>>();
-
-    surface.start_marked_content();
 
     surface.fill_glyphs(
         Point::from_xy(0.0, 0.0),
         fill,
         &glyphs,
         font.clone(),
-        text
+        text,
+        size.to_f32()
     );
 
     if let Some(stroke) = t.stroke.as_ref().map(convert_fixed_stroke) {
@@ -100,11 +98,10 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
             stroke,
             &glyphs,
             font.clone(),
-            text
+            text,
+            size.to_f32()
         );
     }
-
-    surface.end_marked_content();
 }
 
 pub fn handle_image(image: &Image, size: &Size, surface: &mut Surface, _: &mut ExportContext) {
