@@ -12,7 +12,7 @@ use typst::foundations::{Datetime, Smart};
 use typst::layout::{Frame, FrameItem, GroupItem, PageRanges, Size};
 use typst::model::Document;
 use typst::text::{Font, TextItem};
-use typst::visualize::{ColorSpace, FillRule, FixedStroke, Geometry, Gradient, Image, ImageKind, LineCap, LineJoin, Paint, PathItem, RasterFormat, Rgb, Shape};
+use typst::visualize::{ColorSpace, FillRule, FixedStroke, Geometry, Gradient, Image, ImageKind, LineCap, LineJoin, Paint, Path, PathItem, RasterFormat, Rgb, Shape};
 use crate::page::{alloc_page_refs, traverse_pages, write_page_tree};
 use crate::{AbsExt, GlobalRefs, PdfBuilder, References};
 use crate::catalog::write_catalog;
@@ -124,50 +124,52 @@ pub fn handle_shape(shape: &Shape, surface: &mut Surface) {
 
     match &shape.geometry {
         Geometry::Line(l) => {
-            let mut path_builder = PathBuilder::new();
             path_builder.move_to(0.0, 0.0);
             path_builder.line_to(l.x.to_f32(), l.y.to_f32());
         }
         Geometry::Rect(r) => {
-            let mut path_builder = PathBuilder::new();
             path_builder.push_rect(Rect::from_xywh(0.0, 0.0, r.x.to_f32(), r.y.to_f32()).unwrap());
         }
         Geometry::Path(p) => {
-            for item in &p.0 {
-                match item {
-                    PathItem::MoveTo(p) => path_builder.move_to(p.x.to_f32(), p.y.to_f32()),
-                    PathItem::LineTo(p) => path_builder.line_to(p.x.to_f32(), p.y.to_f32()),
-                    PathItem::CubicTo(p1, p2, p3) => path_builder.cubic_to(
-                        p1.x.to_f32(),
-                        p1.y.to_f32(),
-                        p2.x.to_f32(),
-                        p2.y.to_f32(),
-                        p3.x.to_f32(),
-                        p3.y.to_f32()
-                    ),
-                    PathItem::ClosePath => path_builder.close()
-                }
-            }
+            convert_path(p, &mut path_builder);
         }
     }
 
-    let path = path_builder.finish().unwrap();
+    if let Some(path) = path_builder.finish() {
+        if let Some(paint) = &shape.fill {
+            let (paint, opacity) = convert_paint(paint);
 
-    if let Some(paint) = &shape.fill {
-        let (paint, opacity) = convert_paint(paint);
+            let fill = Fill {
+                paint,
+                rule: convert_fill_rule(shape.fill_rule),
+                opacity: NormalizedF32::new(opacity as f32 / 255.0).unwrap(),
+            };
+            surface.fill_path(&path, fill);
+        }
 
-        let fill = Fill {
-            paint,
-            rule: convert_fill_rule(shape.fill_rule),
-            opacity: NormalizedF32::new(opacity as f32 / 255.0).unwrap(),
-        };
-        surface.fill_path(&path, fill);
+        if let Some(stroke) = &shape.stroke {
+            let stroke = convert_fixed_stroke(stroke);
+
+            surface.stroke_path(&path, stroke);
+        }
     }
+}
 
-    if let Some(stroke) = &shape.stroke {
-        let stroke = convert_fixed_stroke(stroke);
-
-        surface.stroke_path(&path, stroke);
+pub fn convert_path(path: &Path, builder: &mut PathBuilder) {
+    for item in &path.0 {
+        match item {
+            PathItem::MoveTo(p) => builder.move_to(p.x.to_f32(), p.y.to_f32()),
+            PathItem::LineTo(p) => builder.line_to(p.x.to_f32(), p.y.to_f32()),
+            PathItem::CubicTo(p1, p2, p3) => builder.cubic_to(
+                p1.x.to_f32(),
+                p1.y.to_f32(),
+                p2.x.to_f32(),
+                p2.y.to_f32(),
+                p3.x.to_f32(),
+                p3.y.to_f32()
+            ),
+            PathItem::ClosePath => builder.close()
+        }
     }
 }
 
@@ -178,7 +180,7 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
         match item {
             FrameItem::Group(g) => handle_group(g, surface, context),
             FrameItem::Text(t) => handle_text(t, surface, context),
-            FrameItem::Shape(s, _) => {}
+            FrameItem::Shape(s, _) => handle_shape(s, surface),
             FrameItem::Image(image, size, _) => handle_image(image, size, surface, context),
             FrameItem::Link(_, _) => {}
             FrameItem::Tag(_) => {}
