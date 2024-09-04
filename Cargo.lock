@@ -2741,6 +2741,7 @@ dependencies = [
  "image",
  "indexmap 2.4.0",
  "kamadak-exif",
+ "krilla",
  "kurbo",
  "lipsum",
  "log",

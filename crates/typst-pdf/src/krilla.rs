@@ -1,7 +1,8 @@
 use std::collections::HashMap;
+use std::ops::Range;
 use std::sync::Arc;
 use krilla::color::rgb;
-use krilla::font::GlyphId;
+use krilla::font::{GlyphId, GlyphUnits};
 use krilla::geom::{Point, Transform};
 use krilla::PageSettings;
 use krilla::path::{Fill, PathBuilder, Stroke};
@@ -11,7 +12,7 @@ use svg2pdf::usvg::{NormalizedF32, Rect};
 use typst::foundations::{Datetime, Smart};
 use typst::layout::{Frame, FrameItem, GroupItem, PageRanges, Size};
 use typst::model::Document;
-use typst::text::{Font, TextItem};
+use typst::text::{Font, Glyph, TextItem};
 use typst::visualize::{ColorSpace, FillRule, FixedStroke, Geometry, Gradient, Image, ImageKind, LineCap, LineJoin, Paint, Path, PathItem, RasterFormat, Rgb, Shape};
 use crate::page::{alloc_page_refs, traverse_pages, write_page_tree};
 use crate::{AbsExt, GlobalRefs, PdfBuilder, References};
@@ -73,33 +74,25 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
     let text = t.text.as_str();
     let size = t.size;
 
-    let glyphs = t.glyphs.iter().map(|g| {
-        krilla::font::Glyph::new(
-            GlyphId::new(g.id as u32),
-            g.x_advance.at(size).to_f32(),
-            g.x_offset.at(size).to_f32(),
-            0.0,
-            g.range.start as usize..g.range.end as usize,
-        )
-    }).collect::<Vec<_>>();
-
     surface.fill_glyphs(
         Point::from_xy(0.0, 0.0),
         fill,
-        &glyphs,
+        &t.glyphs,
         font.clone(),
         text,
-        size.to_f32()
+        size.to_f32(),
+        GlyphUnits::Normalized
     );
 
     if let Some(stroke) = t.stroke.as_ref().map(convert_fixed_stroke) {
         surface.stroke_glyphs(
             Point::from_xy(0.0, 0.0),
             stroke,
-            &glyphs,
+            &t.glyphs,
             font.clone(),
             text,
-            size.to_f32()
+            size.to_f32(),
+            GlyphUnits::Normalized
         );
     }
 }
@@ -184,9 +177,7 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
             FrameItem::Shape(s, _) => handle_shape(s, surface),
             FrameItem::Image(image, size, _) => handle_image(image, size, surface, context),
             FrameItem::Link(_, _) => {}
-            FrameItem::Tag(t) => {
-                println!("{:?}, {:?}", t.kind(), t.elem().func());
-            }
+            FrameItem::Tag(t) => {}
         }
 
         surface.pop();
@@ -247,4 +238,5 @@ fn convert_paint(paint: &Paint) -> (krilla::paint::Paint<krilla::color::rgb::Rgb
         }
     }
 }
+
 

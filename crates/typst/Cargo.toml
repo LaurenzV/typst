@@ -71,6 +71,7 @@ unicode-segmentation = { workspace = true }
 unscanny = { workspace = true }
 usvg = { workspace = true }
 xmlwriter = { workspace = true }
+krilla = {path = "../../../krilla"}
 wasmi = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
