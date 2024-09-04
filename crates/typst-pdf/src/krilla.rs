@@ -39,6 +39,7 @@ impl ExportContext {
     }
 }
 
+#[typst_macros::time(name = "write pdf")]
 pub fn pdf(
     typst_document: &Document,
 ) -> Vec<u8> {
@@ -52,6 +53,11 @@ pub fn pdf(
         handle_frame(&typst_page.frame, &mut surface, &mut context);
     }
 
+    finish(document)
+}
+
+#[typst_macros::time(name = "finish document")]
+pub fn finish(document: krilla::Document) -> Vec<u8> {
     document.finish().unwrap()
 }
 
