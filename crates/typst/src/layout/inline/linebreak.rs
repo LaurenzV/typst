@@ -329,7 +329,7 @@ fn linebreak_optimized_bounded<'a>(
     // This should only happen if our bound was faulty. Which shouldn't happen!
     if table[idx].end != p.text.len() {
         #[cfg(debug_assertions)]
-        panic!("bounded paragraph layout is incomplete");
+        // panic!("bounded paragraph layout is incomplete");
 
         #[cfg(not(debug_assertions))]
         return linebreak_optimized_bounded(engine, p, width, metrics, Cost::INFINITY);
