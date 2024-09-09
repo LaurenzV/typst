@@ -61,7 +61,7 @@ use crate::utils::NonZeroExt;
 /// `title` and `indent` parameters. If desired, however, it is possible to have
 /// more control over the outline's look and style through the
 /// [`outline.entry`]($outline.entry) element.
-#[elem(scope, keywords = ["Table of Contents"], Show, ShowSet, LocalName)]
+#[elem(scope, keywords = ["Table of Contents"], Show, ShowSet, LocalName, Locatable)]
 pub struct OutlineElem {
     /// The title of the outline.
     ///

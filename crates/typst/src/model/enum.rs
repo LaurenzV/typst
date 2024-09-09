@@ -9,7 +9,7 @@ use crate::foundations::{
     cast, elem, scope, Array, Content, Context, NativeElement, Packed, Show, Smart,
     StyleChain, Styles,
 };
-use crate::introspection::Locator;
+use crate::introspection::{Locatable, Locator};
 use crate::layout::{
     Alignment, Axes, BlockElem, Cell, CellGrid, Em, Fragment, GridLayouter, HAlignment,
     Length, Regions, Sizing, VAlignment, VElem,
@@ -73,7 +73,7 @@ use crate::text::TextElem;
 /// Enumeration items can contain multiple paragraphs and other block-level
 /// content. All content that is indented more than an item's marker becomes
 /// part of that item.
-#[elem(scope, title = "Numbered List", Show)]
+#[elem(scope, title = "Numbered List", Show, Locatable)]
 pub struct EnumElem {
     /// If this is `{false}`, the items are spaced apart with
     /// [enum spacing]($enum.spacing). If it is `{true}`, they use normal
@@ -315,7 +315,7 @@ fn layout_enum(
 }
 
 /// An enumeration item.
-#[elem(name = "item", title = "Numbered List Item")]
+#[elem(name = "item", title = "Numbered List Item", Locatable)]
 pub struct EnumItem {
     /// The item's number.
     #[positional]

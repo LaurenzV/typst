@@ -16,13 +16,15 @@ use krilla::geom::{Point, Transform};
 use krilla::path::{Fill, PathBuilder, Stroke};
 use krilla::surface::Surface;
 use krilla::tagging::{ContentTag, StructureGroup, StructureRoot, StructureTag};
-use krilla::PageSettings;
+use krilla::{PageSettings, SerializeSettings};
 use pdf_writer::types::StructRole::P;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::sync::Arc;
 use svg2pdf::usvg::{NormalizedF32, Rect};
-use typst::foundations::{Datetime, Smart};
+use typst::diag::StrResult;
+use typst::foundations::{Datetime, Smart, Value};
+use typst::introspection::TagKind;
 use typst::layout::{Frame, FrameItem, GroupItem, PageRanges, Size};
 use typst::model::Document;
 use typst::text::{Font, Glyph, TextItem};
@@ -34,20 +36,29 @@ use typst::visualize::{
 pub struct ExportContext {
     fonts: HashMap<Font, krilla::font::Font>,
     tags: Vec<StructureGroup>,
+    root: StructureRoot,
+    other_tags: HashSet<String>
 }
 
 impl ExportContext {
     pub fn new() -> Self {
         Self {
             fonts: Default::default(),
-            tags: vec![StructureGroup::new(StructureTag::Paragraph)],
+            tags: vec![],
+            root: StructureRoot::new(),
+            other_tags: HashSet::new()
         }
     }
 }
 
 #[typst_macros::time(name = "write pdf")]
 pub fn pdf(typst_document: &Document) -> Vec<u8> {
-    let mut document = krilla::Document::new();
+    let mut settings = SerializeSettings::default();
+    settings.enable_tagging = true;
+    settings.ascii_compatible = false;
+    settings.compress_content_streams = true;
+
+    let mut document = krilla::Document::new_with(settings);
     let mut context = ExportContext::new();
 
     for typst_page in &typst_document.pages {
@@ -59,10 +70,9 @@ pub fn pdf(typst_document: &Document) -> Vec<u8> {
         let mut surface = page.surface();
         handle_frame(&typst_page.frame, &mut surface, &mut context);
     }
+    document.set_tag_tree(context.root);
 
-    let mut root = StructureRoot::new();
-    root.push(context.tags.pop().unwrap());
-    document.set_tag_tree(root);
+    println!("{:?}", context.other_tags);
 
     finish(document)
 }
@@ -118,7 +128,7 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
 
     surface.end_tagged();
 
-    context.tags[0].push(mcid);
+    context.tags.last_mut().unwrap().push(mcid);
 
     if let Some(stroke) = t.stroke.as_ref().map(convert_fixed_stroke) {
         surface.stroke_glyphs(
@@ -232,7 +242,44 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
                 handle_image(image, size, surface, context)
             }
             FrameItem::Link(_, _) => {}
-            FrameItem::Tag(t) => {}
+            FrameItem::Tag(t) => {
+                match t.kind() {
+                    TagKind::Start => {
+                        let tag = match t.elem().elem().name() {
+                            "par" => StructureTag::Paragraph,
+                            "heading" => match t.elem().field_by_name("level").unwrap().cast::<u32>().unwrap() {
+                                1 => StructureTag::H1,
+                                2 => StructureTag::H2,
+                                3 => StructureTag::H3,
+                                4 => StructureTag::H4,
+                                5 => StructureTag::H5,
+                                6 => StructureTag::H6,
+                                _ => StructureTag::H6,
+                            }
+                            "list" => StructureTag::List,
+                            "outline" => StructureTag::TOC,
+                            _ => {
+                                context.other_tags.insert(t.elem().elem().name().to_string());
+                                StructureTag::Paragraph
+                            }
+                        };
+
+                        context.tags.push(StructureGroup::new(tag));
+                    }
+                    TagKind::End => {
+                        let popped = context.tags.pop().unwrap();
+
+                        if let Some(last) = context.tags.last_mut() {
+                            last.push(popped);
+                        }   else {
+                            context.root.push(popped);
+                        }
+
+                    }
+                }
+                // println!("{:?}, {:?}", t.kind(), t.elem());
+                // println!("{:?}, {:?}", t.kind(), t.elem().elem().name());
+            }
         }
 
         surface.pop();
