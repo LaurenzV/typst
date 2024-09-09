@@ -330,7 +330,6 @@ fn linebreak_optimized_bounded<'a>(
     if table[idx].end != p.text.len() {
         #[cfg(debug_assertions)]
         // panic!("bounded paragraph layout is incomplete");
-
         #[cfg(not(debug_assertions))]
         return linebreak_optimized_bounded(engine, p, width, metrics, Cost::INFINITY);
     }

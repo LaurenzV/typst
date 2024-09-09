@@ -8,12 +8,12 @@ mod extg;
 mod font;
 mod gradient;
 mod image;
+mod krilla;
 mod named_destination;
 mod outline;
 mod page;
 mod pattern;
 mod resources;
-mod krilla;
 
 use std::collections::HashMap;
 use std::hash::Hash;
