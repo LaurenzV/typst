@@ -88,6 +88,10 @@ impl krilla::font::Glyph for Glyph {
     fn y_offset(&self) -> f32 {
         0.0
     }
+
+    fn y_advance(&self) -> f32 {
+        0.0
+    }
 }
 
 /// A slice of a [`TextItem`].

@@ -15,8 +15,7 @@ use krilla::font::{GlyphId, GlyphUnits};
 use krilla::geom::{Point, Transform};
 use krilla::path::{Fill, PathBuilder, Stroke};
 use krilla::surface::Surface;
-use krilla::tagging::{ContentTag, StructureGroup, StructureRoot, StructureTag};
-use krilla::{PageSettings, SerializeSettings};
+use krilla::{PageSettings, SerializeSettings, SvgSettings};
 use pdf_writer::types::StructRole::P;
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
@@ -35,18 +34,14 @@ use typst::visualize::{
 
 pub struct ExportContext {
     fonts: HashMap<Font, krilla::font::Font>,
-    tags: Vec<StructureGroup>,
-    root: StructureRoot,
-    other_tags: HashSet<String>
+    other_tags: HashSet<String>,
 }
 
 impl ExportContext {
     pub fn new() -> Self {
         Self {
             fonts: Default::default(),
-            tags: vec![],
-            root: StructureRoot::new(),
-            other_tags: HashSet::new()
+            other_tags: HashSet::new(),
         }
     }
 }
@@ -54,7 +49,6 @@ impl ExportContext {
 #[typst_macros::time(name = "write pdf")]
 pub fn pdf(typst_document: &Document) -> Vec<u8> {
     let mut settings = SerializeSettings::default();
-    settings.enable_tagging = true;
     settings.ascii_compatible = false;
     settings.compress_content_streams = true;
 
@@ -70,7 +64,6 @@ pub fn pdf(typst_document: &Document) -> Vec<u8> {
         let mut surface = page.surface();
         handle_frame(&typst_page.frame, &mut surface, &mut context);
     }
-    document.set_tag_tree(context.root);
 
     println!("{:?}", context.other_tags);
 
@@ -114,8 +107,6 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
     let text = t.text.as_str();
     let size = t.size;
 
-    let mcid = surface.start_tagged(ContentTag::Span);
-
     surface.fill_glyphs(
         Point::from_xy(0.0, 0.0),
         fill,
@@ -124,11 +115,8 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
         text,
         size.to_f32(),
         GlyphUnits::Normalized,
+        false,
     );
-
-    surface.end_tagged();
-
-    context.tags.last_mut().unwrap().push(mcid);
 
     if let Some(stroke) = t.stroke.as_ref().map(convert_fixed_stroke) {
         surface.stroke_glyphs(
@@ -139,6 +127,7 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
             text,
             size.to_f32(),
             GlyphUnits::Normalized,
+            true,
         );
     }
 }
@@ -166,6 +155,7 @@ pub fn handle_image(
             surface.draw_svg(
                 svg.tree(),
                 krilla::geom::Size::from_wh(size.x.to_f32(), size.y.to_f32()).unwrap(),
+                SvgSettings::default(),
             );
         }
     }
@@ -242,48 +232,11 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
                 handle_image(image, size, surface, context)
             }
             FrameItem::Link(_, _) => {}
-            FrameItem::Tag(t) => {
-                match t.kind() {
-                    TagKind::Start => {
-                        let tag = match t.elem().elem().name() {
-                            "par" => StructureTag::Paragraph,
-                            "heading" => match t.elem().field_by_name("level").unwrap().cast::<u32>().unwrap() {
-                                1 => StructureTag::H1,
-                                2 => StructureTag::H2,
-                                3 => StructureTag::H3,
-                                4 => StructureTag::H4,
-                                5 => StructureTag::H5,
-                                6 => StructureTag::H6,
-                                _ => StructureTag::H6,
-                            }
-                            "list" => StructureTag::List,
-                            "outline" => StructureTag::TOC,
-                            _ => {
-                                context.other_tags.insert(t.elem().elem().name().to_string());
-                                StructureTag::Paragraph
-                            }
-                        };
-
-                        context.tags.push(StructureGroup::new(tag));
-                    }
-                    TagKind::End => {
-                        let popped = context.tags.pop().unwrap();
-
-                        if let Some(last) = context.tags.last_mut() {
-                            last.push(popped);
-                        }   else {
-                            context.root.push(popped);
-                        }
-
-                    }
-                }
-                // println!("{:?}, {:?}", t.kind(), t.elem());
-                // println!("{:?}, {:?}", t.kind(), t.elem().elem().name());
-            }
+            FrameItem::Tag(_) => {}
         }
-
-        surface.pop();
     }
+
+    surface.pop();
 }
 
 fn convert_fill_rule(fill_rule: FillRule) -> krilla::path::FillRule {
@@ -293,7 +246,7 @@ fn convert_fill_rule(fill_rule: FillRule) -> krilla::path::FillRule {
     }
 }
 
-fn convert_fixed_stroke(stroke: &FixedStroke) -> Stroke<krilla::color::rgb::Rgb> {
+fn convert_fixed_stroke(stroke: &FixedStroke) -> Stroke {
     let (paint, opacity) = convert_paint(&stroke.paint);
     Stroke {
         paint,
@@ -333,20 +286,16 @@ fn convert_transform(t: crate::Transform) -> krilla::geom::Transform {
     )
 }
 
-fn convert_paint(paint: &Paint) -> (krilla::paint::Paint<krilla::color::rgb::Rgb>, u8) {
+fn convert_paint(paint: &Paint) -> (krilla::paint::Paint, u8) {
     match paint {
         Paint::Solid(c) => {
             let components = c.to_space(ColorSpace::Srgb).to_vec4_u8();
             (
-                krilla::paint::Paint::Color(rgb::Color::new(
-                    components[0],
-                    components[1],
-                    components[2],
-                )),
+                rgb::Color::new(components[0], components[1], components[2]).into(),
                 components[3],
             )
         }
-        Paint::Gradient(g) => (krilla::paint::Paint::Color(rgb::Color::black()), 255),
-        Paint::Pattern(_) => (krilla::paint::Paint::Color(rgb::Color::black()), 255),
+        Paint::Gradient(_) => (rgb::Color::black().into(), 255),
+        Paint::Pattern(_) => (rgb::Color::black().into(), 255),
     }
 }

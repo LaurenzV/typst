@@ -760,9 +760,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "font-types"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3ade9a548352698c7f1e340fd5caf76b9f06c0b587e6b4840ea077e1524c685"
+checksum = "3cdb0bc47d40fdd11177c271c1bb3704b4230e7a945891d3cc184244c74d64b2"
 dependencies = [
  "bytemuck",
 ]
@@ -1279,8 +1279,9 @@ dependencies = [
 
 [[package]]
 name = "krilla"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
+ "base64",
  "flate2",
  "float-cmp",
  "fontdb",
@@ -1289,6 +1290,7 @@ dependencies = [
  "miniz_oxide 0.8.0",
  "once_cell",
  "pdf-writer 0.11.0",
+ "rayon",
  "resvg",
  "rustybuzz",
  "siphasher 1.0.1",
@@ -1297,6 +1299,7 @@ dependencies = [
  "tiny-skia",
  "tiny-skia-path",
  "usvg",
+ "xmp-writer",
  "yoke",
  "zune-jpeg",
  "zune-png",
@@ -2005,9 +2008,9 @@ dependencies = [
 
 [[package]]
 name = "read-fonts"
-version = "0.21.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5baa1d3f6c6449e4299e17814855468617c2924753ce4f0601b16cba9f8e7bd8"
+checksum = "0f37de1c4e46fd22ef9e1242df0ffb52ea62b64a9e91d4df16cecc300f31dfd0"
 dependencies = [
  "bytemuck",
  "font-types",
@@ -2329,9 +2332,9 @@ checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 
 [[package]]
 name = "skrifa"
-version = "0.21.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a49b2de0351f3b8c6dc852c83be4b5a0095e607a29c5731597c0204ed5ec78e"
+checksum = "a502599a3648f4fa3a5d0a532006d03a1f72fb9a8bc0c7aa97a74ab932f44ce3"
 dependencies = [
  "bytemuck",
  "read-fonts",
