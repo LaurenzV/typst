@@ -132,6 +132,7 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
     }
 }
 
+#[typst_macros::time(name = "handle image")]
 pub fn handle_image(
     image: &Image,
     size: &Size,
