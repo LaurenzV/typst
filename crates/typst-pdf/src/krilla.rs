@@ -235,9 +235,9 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
             FrameItem::Link(_, _) => {}
             FrameItem::Tag(_) => {}
         }
-    }
 
-    surface.pop();
+        surface.pop();
+    }
 }
 
 fn convert_fill_rule(fill_rule: FillRule) -> krilla::path::FillRule {

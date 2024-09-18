@@ -29,6 +29,7 @@ struct Repr {
 impl RasterImage {
     /// Decode a raster image.
     #[comemo::memoize]
+    #[typst_macros::time(name = "decode image")]
     pub fn new(data: Bytes, format: RasterFormat) -> StrResult<RasterImage> {
         fn decode_with<T: ImageDecoder>(
             decoder: ImageResult<T>,
