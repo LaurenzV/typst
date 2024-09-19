@@ -9,7 +9,7 @@ use crate::named_destination::write_named_destinations;
 use crate::page::{alloc_page_refs, traverse_pages, write_page_tree};
 use crate::pattern::write_patterns;
 use crate::resources::{alloc_resources_refs, write_resource_dictionaries};
-use crate::{AbsExt, GlobalRefs, PdfBuilder, References};
+use crate::{deflate, AbsExt, GlobalRefs, PdfBuilder, References};
 use krilla::color::rgb;
 use krilla::font::{GlyphId, GlyphUnits};
 use krilla::geom::{Point, Transform};
@@ -18,8 +18,12 @@ use krilla::surface::Surface;
 use krilla::{PageSettings, SerializeSettings, SvgSettings};
 use pdf_writer::types::StructRole::P;
 use std::collections::{HashMap, HashSet};
+use std::io::Cursor;
 use std::ops::Range;
 use std::sync::Arc;
+use image::{DynamicImage, GenericImageView, Rgba};
+use krilla::image::{BitsPerComponent, ImageColorspace};
+use pdf_writer::Filter;
 use svg2pdf::usvg::{NormalizedF32, Rect};
 use typst::diag::StrResult;
 use typst::foundations::{Datetime, Smart, Value};
@@ -27,10 +31,7 @@ use typst::introspection::TagKind;
 use typst::layout::{Frame, FrameItem, GroupItem, PageRanges, Size};
 use typst::model::Document;
 use typst::text::{Font, Glyph, TextItem};
-use typst::visualize::{
-    ColorSpace, FillRule, FixedStroke, Geometry, Gradient, Image, ImageKind, LineCap,
-    LineJoin, Paint, Path, PathItem, RasterFormat, Rgb, Shape,
-};
+use typst::visualize::{ColorSpace, FillRule, FixedStroke, Geometry, Gradient, Image, ImageKind, LineCap, LineJoin, Paint, Path, PathItem, RasterFormat, RasterImage, Rgb, Shape};
 
 pub struct ExportContext {
     fonts: HashMap<Font, krilla::font::Font>,
@@ -91,9 +92,11 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
         .entry(t.font.clone())
         .or_insert_with(|| {
             krilla::font::Font::new(
+                // TODO: Don't do to_vec here!
                 Arc::new(t.font.data().to_vec()),
                 t.font.index(),
                 vec![],
+                None
             )
             .unwrap()
         })
@@ -132,6 +135,29 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
     }
 }
 
+fn encode_raster_image(image: &RasterImage) -> (Vec<u8>, ImageColorspace) {
+    let dynamic = image.dynamic();
+    let channel_count = dynamic.color().channel_count();
+
+    match (dynamic, channel_count) {
+        (DynamicImage::ImageLuma8(luma), _) =>(luma.as_raw().clone(), ImageColorspace::Luma),
+        (DynamicImage::ImageRgb8(rgb), _) => (rgb.as_raw().clone(), ImageColorspace::Rgb),
+        // Grayscale image
+        (_, 1 | 2) => (dynamic.to_luma8().as_raw().clone(), ImageColorspace::Luma),
+        // Anything else
+        _ => (dynamic.to_rgb8().as_raw().clone(), ImageColorspace::Rgb),
+    }
+}
+
+fn encode_alpha(raster: &RasterImage) -> Vec<u8> {
+    let pixels: Vec<_> = raster
+        .dynamic()
+        .pixels()
+        .map(|(_, _, Rgba([_, _, _, a]))| a)
+        .collect();
+    pixels
+}
+
 #[typst_macros::time(name = "handle image")]
 pub fn handle_image(
     image: &Image,
@@ -141,11 +167,9 @@ pub fn handle_image(
 ) {
     match image.kind() {
         ImageKind::Raster(raster) => {
-            let image = match raster.format() {
-                RasterFormat::Png => krilla::image::Image::from_png(raster.data()),
-                RasterFormat::Jpg => krilla::image::Image::from_jpeg(raster.data()),
-                RasterFormat::Gif => krilla::image::Image::from_gif(raster.data()),
-            }
+            let (color_channel, color_space) = encode_raster_image(raster);
+            let alpha_channel = raster.dynamic().color().has_alpha().then(|| encode_alpha(&raster));
+            let image = krilla::image::Image::from_sampled(color_channel, alpha_channel, BitsPerComponent::Eight, color_space, raster.width(), raster.height())
             .unwrap();
             surface.draw_image(
                 image,
