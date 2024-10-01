@@ -748,6 +748,12 @@ name = "float-cmp"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
+
+[[package]]
+name = "float-cmp"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b09cf3155332e944990140d967ff5eceb70df778b34f77d8075db46e4704e6d8"
 dependencies = [
  "num-traits",
 ]
@@ -781,6 +787,20 @@ name = "fontdb"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37be9fc20d966be438cd57a45767f73349477fb0f85ce86e000557f787298afb"
+dependencies = [
+ "fontconfig-parser",
+ "log",
+ "memmap2",
+ "slotmap",
+ "tinyvec",
+ "ttf-parser",
+]
+
+[[package]]
+name = "fontdb"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3a6f9af55fb97ad673fb7a69533eb2f967648a06fa21f8c9bb2cd6d33975716"
 dependencies = [
  "fontconfig-parser",
  "log",
@@ -1283,22 +1303,21 @@ version = "0.2.0"
 dependencies = [
  "base64",
  "flate2",
- "float-cmp",
- "fontdb",
+ "float-cmp 0.10.0",
+ "fontdb 0.22.0",
  "gif",
  "image-webp",
  "miniz_oxide 0.8.0",
  "once_cell",
  "pdf-writer 0.11.0",
- "rayon",
- "resvg",
+ "resvg 0.44.0",
  "rustybuzz",
  "siphasher 1.0.1",
  "skrifa",
  "subsetter 0.2.0",
  "tiny-skia",
  "tiny-skia-path",
- "usvg",
+ "usvg 0.44.0",
  "xmp-writer",
  "yoke",
  "zune-jpeg",
@@ -1748,8 +1767,7 @@ dependencies = [
 [[package]]
 name = "pdf-writer"
 version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "315bd599c75e149b51ad109a01f05cf887ccbab9a7b18d4852303f5c8823be71"
+source = "git+https://github.com/LaurenzV/pdf-writer?rev=09ed93e#09ed93efd9ed42a1f7584a8b2762b0455691332a"
 dependencies = [
  "bitflags 2.6.0",
  "itoa",
@@ -2078,7 +2096,24 @@ dependencies = [
  "rgb",
  "svgtypes",
  "tiny-skia",
- "usvg",
+ "usvg 0.43.0",
+ "zune-jpeg",
+]
+
+[[package]]
+name = "resvg"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a325d5e8d1cebddd070b13f44cec8071594ab67d1012797c121f27a669b7958"
+dependencies = [
+ "gif",
+ "image-webp",
+ "log",
+ "pico-args",
+ "rgb",
+ "svgtypes",
+ "tiny-skia",
+ "usvg 0.44.0",
  "zune-jpeg",
 ]
 
@@ -2386,7 +2421,7 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6637bab7722d379c8b41ba849228d680cc12d0a45ba1fa2b48f2a30577a06731"
 dependencies = [
- "float-cmp",
+ "float-cmp 0.9.0",
 ]
 
 [[package]]
@@ -2444,18 +2479,18 @@ name = "svg2pdf"
 version = "0.11.0"
 source = "git+https://github.com/typst/svg2pdf?rev=5963e1e#5963e1e890ac89fbf6b4750b3470ebd5765ef606"
 dependencies = [
- "fontdb",
+ "fontdb 0.21.0",
  "image",
  "log",
  "miniz_oxide 0.8.0",
  "once_cell",
  "pdf-writer 0.10.0",
- "resvg",
+ "resvg 0.43.0",
  "siphasher 1.0.1",
  "subsetter 0.11.0",
  "tiny-skia",
  "ttf-parser",
- "usvg",
+ "usvg 0.43.0",
 ]
 
 [[package]]
@@ -2734,7 +2769,7 @@ dependencies = [
  "csv",
  "ecow",
  "flate2",
- "fontdb",
+ "fontdb 0.22.0",
  "hayagriva",
  "hypher",
  "icu_properties",
@@ -2783,7 +2818,7 @@ dependencies = [
  "unicode-script",
  "unicode-segmentation",
  "unscanny",
- "usvg",
+ "usvg 0.44.0",
  "wasmi",
  "xmlwriter",
 ]
@@ -2900,7 +2935,7 @@ dependencies = [
  "ecow",
  "env_proxy",
  "flate2",
- "fontdb",
+ "fontdb 0.22.0",
  "native-tls",
  "once_cell",
  "openssl",
@@ -2956,14 +2991,14 @@ dependencies = [
  "comemo",
  "image",
  "pixglyph",
- "resvg",
+ "resvg 0.44.0",
  "roxmltree",
  "tiny-skia",
  "ttf-parser",
  "typst",
  "typst-macros",
  "typst-timing",
- "usvg",
+ "usvg 0.44.0",
 ]
 
 [[package]]
@@ -3189,7 +3224,34 @@ dependencies = [
  "base64",
  "data-url",
  "flate2",
- "fontdb",
+ "fontdb 0.21.0",
+ "imagesize",
+ "kurbo",
+ "log",
+ "pico-args",
+ "roxmltree",
+ "rustybuzz",
+ "simplecss",
+ "siphasher 1.0.1",
+ "strict-num",
+ "svgtypes",
+ "tiny-skia-path",
+ "unicode-bidi",
+ "unicode-script",
+ "unicode-vo",
+ "xmlwriter",
+]
+
+[[package]]
+name = "usvg"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7447e703d7223b067607655e625e0dbca80822880248937da65966194c4864e6"
+dependencies = [
+ "base64",
+ "data-url",
+ "flate2",
+ "fontdb 0.22.0",
  "imagesize",
  "kurbo",
  "log",

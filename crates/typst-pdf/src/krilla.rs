@@ -22,7 +22,7 @@ use std::io::Cursor;
 use std::ops::Range;
 use std::sync::Arc;
 use image::{DynamicImage, GenericImageView, Rgba};
-use krilla::image::{BitsPerComponent, ImageColorspace};
+use krilla::validation::Validator;
 use pdf_writer::Filter;
 use svg2pdf::usvg::{NormalizedF32, Rect};
 use typst::diag::StrResult;
@@ -52,6 +52,7 @@ pub fn pdf(typst_document: &Document) -> Vec<u8> {
     let mut settings = SerializeSettings::default();
     settings.ascii_compatible = false;
     settings.compress_content_streams = true;
+    settings.validator = Validator::PdfA2B;
 
     let mut document = krilla::Document::new_with(settings);
     let mut context = ExportContext::new();
@@ -96,7 +97,6 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
                 Arc::new(t.font.data().to_vec()),
                 t.font.index(),
                 vec![],
-                None
             )
             .unwrap()
         })
@@ -135,19 +135,6 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
     }
 }
 
-fn encode_raster_image(image: &RasterImage) -> (Vec<u8>, ImageColorspace) {
-    let dynamic = image.dynamic();
-    let channel_count = dynamic.color().channel_count();
-
-    match (dynamic, channel_count) {
-        (DynamicImage::ImageLuma8(luma), _) =>(luma.as_raw().clone(), ImageColorspace::Luma),
-        (DynamicImage::ImageRgb8(rgb), _) => (rgb.as_raw().clone(), ImageColorspace::Rgb),
-        // Grayscale image
-        (_, 1 | 2) => (dynamic.to_luma8().as_raw().clone(), ImageColorspace::Luma),
-        // Anything else
-        _ => (dynamic.to_rgb8().as_raw().clone(), ImageColorspace::Rgb),
-    }
-}
 
 fn encode_alpha(raster: &RasterImage) -> Vec<u8> {
     let pixels: Vec<_> = raster
@@ -167,9 +154,7 @@ pub fn handle_image(
 ) {
     match image.kind() {
         ImageKind::Raster(raster) => {
-            let (color_channel, color_space) = encode_raster_image(raster);
-            let alpha_channel = raster.dynamic().color().has_alpha().then(|| encode_alpha(&raster));
-            let image = krilla::image::Image::from_sampled(color_channel, alpha_channel, BitsPerComponent::Eight, color_space, raster.width(), raster.height())
+            let image = krilla::image::Image::from_png(raster.data())
             .unwrap();
             surface.draw_image(
                 image,

@@ -184,7 +184,8 @@ fn encode_alpha(raster: &RasterImage) -> (Vec<u8>, Filter) {
 #[typst_macros::time(name = "encode svg")]
 fn encode_svg(svg: &SvgImage) -> (Chunk, Ref) {
     // TODO: Don't unwrap once we have export diagostics.
-    svg2pdf::to_chunk(svg.tree(), svg2pdf::ConversionOptions::default()).unwrap()
+    // svg2pdf::to_chunk(svg.tree(), svg2pdf::ConversionOptions::default()).unwrap()
+        (Chunk::new(), Ref::new(1))
 }
 
 /// A pre-encoded image.
