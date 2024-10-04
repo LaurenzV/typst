@@ -52,7 +52,7 @@ pub fn pdf(typst_document: &Document) -> Vec<u8> {
     let mut settings = SerializeSettings::default();
     settings.ascii_compatible = false;
     settings.compress_content_streams = true;
-    settings.validator = Validator::PdfA2B;
+    settings.validator = Validator::A2_B;
 
     let mut document = krilla::Document::new_with(settings);
     let mut context = ExportContext::new();
