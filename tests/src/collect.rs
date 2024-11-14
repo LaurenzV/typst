@@ -3,10 +3,11 @@ use std::fmt::{self, Display, Formatter};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use ecow::{eco_format, EcoString};
-use typst::syntax::package::PackageVersion;
-use typst::syntax::{is_id_continue, is_ident, is_newline, FileId, Source, VirtualPath};
+use typst_syntax::package::PackageVersion;
+use typst_syntax::{is_id_continue, is_ident, is_newline, FileId, Source, VirtualPath};
 use unscanny::Scanner;
 
 /// Collects all tests from all files.
@@ -389,6 +390,18 @@ impl<'a> Parser<'a> {
 
 /// Whether a test is within the selected set to run.
 fn selected(name: &str, abs: PathBuf) -> bool {
+    static SKIPPED: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+        String::leak(std::fs::read_to_string(crate::SKIP_PATH).unwrap())
+            .lines()
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty() && !line.starts_with("//"))
+            .collect()
+    });
+
+    if SKIPPED.contains(name) {
+        return false;
+    }
+
     let paths = &crate::ARGS.path;
     if !paths.is_empty() && !paths.iter().any(|path| abs.starts_with(path)) {
         return false;

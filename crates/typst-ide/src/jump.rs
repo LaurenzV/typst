@@ -1,35 +1,35 @@
 use std::num::NonZeroUsize;
 
-use ecow::EcoString;
 use typst::layout::{Frame, FrameItem, Point, Position, Size};
-use typst::model::{Destination, Document};
+use typst::model::{Destination, Document, Url};
 use typst::syntax::{FileId, LinkedNode, Side, Source, Span, SyntaxKind};
 use typst::visualize::Geometry;
-use typst::World;
+use typst::WorldExt;
+
+use crate::IdeWorld;
 
 /// Where to [jump](jump_from_click) to.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Jump {
-    /// Jump to a position in a source file.
-    Source(FileId, usize),
+    /// Jump to a position in a file.
+    File(FileId, usize),
     /// Jump to an external URL.
-    Url(EcoString),
+    Url(Url),
     /// Jump to a point on a page.
     Position(Position),
 }
 
 impl Jump {
-    fn from_span(world: &dyn World, span: Span) -> Option<Self> {
+    fn from_span(world: &dyn IdeWorld, span: Span) -> Option<Self> {
         let id = span.id()?;
-        let source = world.source(id).ok()?;
-        let node = source.find(span)?;
-        Some(Self::Source(id, node.offset()))
+        let offset = world.range(span)?.start;
+        Some(Self::File(id, offset))
     }
 }
 
 /// Determine where to jump to based on a click in a frame.
 pub fn jump_from_click(
-    world: &dyn World,
+    world: &dyn IdeWorld,
     document: &Document,
     frame: &Frame,
     click: Point,
@@ -83,7 +83,7 @@ pub fn jump_from_click(
                         } else {
                             node.offset()
                         };
-                        return Some(Jump::Source(source.id(), pos));
+                        return Some(Jump::File(source.id(), pos));
                     }
 
                     pos.x += width;
@@ -113,25 +113,30 @@ pub fn jump_from_cursor(
     document: &Document,
     source: &Source,
     cursor: usize,
-) -> Option<Position> {
+) -> Vec<Position> {
     fn is_text(node: &LinkedNode) -> bool {
         node.get().kind() == SyntaxKind::Text
     }
 
     let root = LinkedNode::new(source.root());
-    let node = root
+    let Some(node) = root
         .leaf_at(cursor, Side::Before)
         .filter(is_text)
-        .or_else(|| root.leaf_at(cursor, Side::After).filter(is_text))?;
+        .or_else(|| root.leaf_at(cursor, Side::After).filter(is_text))
+    else {
+        return vec![];
+    };
 
     let span = node.span();
-    for (i, page) in document.pages.iter().enumerate() {
-        if let Some(point) = find_in_frame(&page.frame, span) {
-            return Some(Position { page: NonZeroUsize::new(i + 1).unwrap(), point });
-        }
-    }
-
-    None
+    document
+        .pages
+        .iter()
+        .enumerate()
+        .filter_map(|(i, page)| {
+            find_in_frame(&page.frame, span)
+                .map(|point| Position { page: NonZeroUsize::new(i + 1).unwrap(), point })
+        })
+        .collect()
 }
 
 /// Find the position of a span in a frame.
@@ -189,7 +194,7 @@ mod tests {
     }
 
     fn cursor(cursor: usize) -> Option<Jump> {
-        Some(Jump::Source(TestWorld::main_id(), cursor))
+        Some(Jump::File(TestWorld::main_id(), cursor))
     }
 
     fn pos(page: usize, x: f64, y: f64) -> Option<Position> {
@@ -201,7 +206,7 @@ mod tests {
 
     macro_rules! assert_approx_eq {
         ($l:expr, $r:expr) => {
-            assert!(($l.to_raw() - $r.to_raw()).abs() < 0.1, "{:?} ≉ {:?}", $l, $r);
+            assert!(($l - $r).abs() < Abs::pt(0.1), "{:?} ≉ {:?}", $l, $r);
         };
     }
 
@@ -226,8 +231,8 @@ mod tests {
         let world = TestWorld::new(text);
         let doc = typst::compile(&world).output.unwrap();
         let pos = jump_from_cursor(&doc, &world.main, cursor);
-        assert_eq!(pos.is_some(), expected.is_some());
-        if let (Some(pos), Some(expected)) = (pos, expected) {
+        assert_eq!(!pos.is_empty(), expected.is_some());
+        if let (Some(pos), Some(expected)) = (pos.first(), expected) {
             assert_eq!(pos.page, expected.page);
             assert_approx_eq!(pos.point.x, expected.point.x);
             assert_approx_eq!(pos.point.y, expected.point.y);

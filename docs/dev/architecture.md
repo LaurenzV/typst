@@ -11,19 +11,16 @@ Let's start with a broad overview of the directories in this repository:
   and library.
 - `crates/typst-cli`: Typst's command line interface. This is a relatively small
   layer on top of the compiler and the exporters.
-- `crates/typst-docs`: Generates the content of the official
-  [documentation][docs] from the content of the `docs` folder and the inline
-  Rust documentation. Only generates the content and structure, not the concrete
-  HTML (that part is currently closed source).
 - `crates/typst-ide`: Exposes IDE functionality.
 - `crates/typst-macros`: Procedural macros for the compiler.
 - `crates/typst-pdf`: The PDF exporter.
 - `crates/typst-render`: A renderer for Typst frames.
 - `crates/typst-svg`: The SVG exporter.
 - `crates/typst-syntax`: Home to the parser and syntax tree definition.
-- `docs`: Source files for longer-form parts of the documentation. Individual
-  elements and functions are documented inline with the Rust source code.
-- `assets`: Fonts and files used for tests and the documentation.
+- `docs`: Generates the content of the official
+  [documentation][docs] from markdown files and the inline
+  Rust documentation. Only generates the content and structure, not the concrete
+  HTML (that part is currently closed source).
 - `tests`: Integration tests for Typst compilation.
 - `tools`: Tooling for development.
 
@@ -159,7 +156,7 @@ builds heavily on the other modules (most importantly, `syntax` and `eval`).
 **Syntactic:**
 Basic IDE functionality is based on a file's syntax. However, the standard
 syntax node is a bit too limited for writing IDE tooling. It doesn't provide
-access to its parents or neighbours. This is a fine for an evaluation-like
+access to its parents or neighbours. This is fine for an evaluation-like
 recursive traversal, but impractical for IDE use cases. For this reason, there
 is an additional abstraction on top of a syntax node called a `LinkedNode`,
 which is used pervasively across the `ide` module.

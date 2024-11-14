@@ -5,13 +5,14 @@ use std::path::Path;
 use ecow::eco_vec;
 use tiny_skia as sk;
 use typst::diag::{SourceDiagnostic, Warned};
-use typst::foundations::Smart;
 use typst::layout::{Abs, Frame, FrameItem, Page, Transform};
 use typst::model::Document;
 use typst::visualize::Color;
 use typst::WorldExt;
+use typst_pdf::PdfOptions;
 
 use crate::collect::{FileSize, NoteKind, Test};
+use crate::logger::TestResult;
 use crate::world::TestWorld;
 
 /// Runs a single test.
@@ -19,23 +20,6 @@ use crate::world::TestWorld;
 /// Returns whether the test passed.
 pub fn run(test: &Test) -> TestResult {
     Runner::new(test).run()
-}
-
-/// The result of running a single test.
-pub struct TestResult {
-    /// The error log for this test. If empty, the test passed.
-    pub errors: String,
-    /// The info log for this test.
-    pub infos: String,
-    /// Whether the image was mismatched.
-    pub mismatched_image: bool,
-}
-
-impl TestResult {
-    /// Whether the test passed.
-    pub fn is_ok(&self) -> bool {
-        self.errors.is_empty()
-    }
 }
 
 /// Write a line to a log sink, defaulting to the test's error log.
@@ -190,7 +174,7 @@ impl<'a> Runner<'a> {
         // Write PDF if requested.
         if crate::ARGS.pdf() {
             let pdf_path = format!("{}/pdf/{}.pdf", crate::STORE_PATH, self.test.name);
-            let pdf = typst_pdf::pdf(document, Smart::Auto, None, None);
+            let pdf = typst_pdf::pdf(document, &PdfOptions::default()).unwrap();
             std::fs::write(pdf_path, pdf).unwrap();
         }
 

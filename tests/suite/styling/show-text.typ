@@ -160,6 +160,18 @@ hi
 @netwok hey " dis
 
 #show bibliography: none
+#bibliography("/assets/bib/works.bib", style: "american-physics-society")
+
+--- show-text-in-citation ---
+#show "A": "B"
+#show "[": "("
+#show "]": ")"
+#show "[2]": set text(red)
+
+@netwok A \
+@arrgh B
+
+#show bibliography: none
 #bibliography("/assets/bib/works.bib")
 
 --- show-text-linebreak ---
@@ -199,3 +211,12 @@ $a^2 + b^2 = c^2$ is Pythagoras' theorem.
 a \ #h(0pt, weak: true)
 b \ #h(0pt, weak: true)
 $x$ c $y$
+
+--- issue-5014-show-text-tags ---
+#{
+  let c = counter("c")
+  show "b": context c.get().first()
+  [a]
+  c.step()
+  [bc]
+}

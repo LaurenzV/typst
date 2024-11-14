@@ -22,12 +22,16 @@
 #set text(lang: "fr")
 "Le cheval ne mange pas de salade de concombres" est la première phrase jamais prononcée au 'téléphone'.
 
+--- smartquote-fr-ch ---
+#set text(lang: "fr", region: "CH")
+"Le cheval ne mange pas de salade de concombres" est la première phrase jamais prononcée au 'téléphone'.
+
 --- smartquote-fi ---
 #set text(lang: "fi")
 "Hevonen ei syö kurkkusalaattia" oli ensimmäinen koskaan 'puhelimessa' lausuttu lause.
 
---- smartquote-gr ---
-#set text(lang: "gr")
+--- smartquote-el ---
+#set text(lang: "el")
 "Το άλογο δεν τρώει αγγουροσαλάτα" ήταν η πρώτη πρόταση που ειπώθηκε στο 'τηλέφωνο'.
 
 --- smartquote-he ---
@@ -161,3 +165,6 @@ Some people's thought on this would be #[#set smartquote(enabled: false); "stran
 
 "test"\
 "test"
+
+--- issue-5146-smartquotes-after-equations ---
+$i$'s $i$ 's
