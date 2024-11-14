@@ -68,32 +68,6 @@ impl Glyph {
     }
 }
 
-impl krilla::font::Glyph for Glyph {
-    fn glyph_id(&self) -> krilla::font::GlyphId {
-        krilla::font::GlyphId::new(self.id as u32)
-    }
-
-    fn text_range(&self) -> Range<usize> {
-        self.range.start as usize..self.range.end as usize
-    }
-
-    fn x_advance(&self) -> f32 {
-        self.x_advance.get() as f32
-    }
-
-    fn x_offset(&self) -> f32 {
-        self.x_offset.get() as f32
-    }
-
-    fn y_offset(&self) -> f32 {
-        0.0
-    }
-
-    fn y_advance(&self) -> f32 {
-        0.0
-    }
-}
-
 /// A slice of a [`TextItem`].
 pub struct TextItemView<'a> {
     /// The whole item this is a part of

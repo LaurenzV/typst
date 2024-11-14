@@ -26,6 +26,7 @@ comemo = { workspace = true }
 ecow = { workspace = true }
 image = { workspace = true }
 indexmap = { workspace = true }
+krilla = { workspace = true }
 miniz_oxide = { workspace = true }
 pdf-writer = { workspace = true }
 serde = { workspace = true }
@@ -33,7 +34,6 @@ subsetter = { workspace = true }
 svg2pdf = { workspace = true }
 ttf-parser = { workspace = true }
 xmp-writer = { workspace = true }
-krilla = {path = "../../../krilla"}
 
 [lints]
 workspace = true

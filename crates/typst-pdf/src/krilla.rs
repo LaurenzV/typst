@@ -1,58 +1,50 @@
-use crate::catalog::write_catalog;
-use crate::color::alloc_color_functions_refs;
-use crate::color_font::write_color_fonts;
-use crate::extg::write_graphic_states;
-use crate::font::write_fonts;
-use crate::gradient::write_gradients;
-use crate::image::write_images;
-use crate::named_destination::write_named_destinations;
-use crate::page::{alloc_page_refs, traverse_pages, write_page_tree};
-use crate::pattern::write_patterns;
-use crate::resources::{alloc_resources_refs, write_resource_dictionaries};
-use crate::{deflate, AbsExt, GlobalRefs, PdfBuilder, References};
+
+use crate::{AbsExt};
 use krilla::color::rgb;
-use krilla::font::{GlyphId, GlyphUnits};
+use krilla::font::{GlyphUnits};
 use krilla::geom::{Point, Transform};
 use krilla::path::{Fill, PathBuilder, Stroke};
 use krilla::surface::Surface;
 use krilla::{PageSettings, SerializeSettings, SvgSettings};
-use pdf_writer::types::StructRole::P;
-use std::collections::{HashMap, HashSet};
-use std::io::Cursor;
+use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
-use image::{DynamicImage, GenericImageView, Rgba};
+use image::{GenericImageView, Rgba};
 use krilla::validation::Validator;
-use pdf_writer::Filter;
+use krilla::version::PdfVersion;
 use svg2pdf::usvg::{NormalizedF32, Rect};
-use typst::diag::StrResult;
-use typst::foundations::{Datetime, Smart, Value};
-use typst::introspection::TagKind;
-use typst::layout::{Frame, FrameItem, GroupItem, PageRanges, Size};
-use typst::model::Document;
-use typst::text::{Font, Glyph, TextItem};
-use typst::visualize::{ColorSpace, FillRule, FixedStroke, Geometry, Gradient, Image, ImageKind, LineCap, LineJoin, Paint, Path, PathItem, RasterFormat, RasterImage, Rgb, Shape};
+use typst_library::layout::{Frame, FrameItem, GroupItem, Size};
+use typst_library::model::Document;
+use typst_library::text::{Font, Glyph, TextItem};
+use typst_library::visualize::{ColorSpace, FillRule, FixedStroke, Geometry, Image, ImageKind, LineCap, LineJoin, Paint, Path, PathItem, Shape};
 
 pub struct ExportContext {
     fonts: HashMap<Font, krilla::font::Font>,
-    other_tags: HashSet<String>,
 }
 
 impl ExportContext {
     pub fn new() -> Self {
         Self {
             fonts: Default::default(),
-            other_tags: HashSet::new(),
         }
     }
 }
 
+// TODO: Change rustybuzz cluster behavior so it works with ActualText
+
 #[typst_macros::time(name = "write pdf")]
 pub fn pdf(typst_document: &Document) -> Vec<u8> {
-    let mut settings = SerializeSettings::default();
-    settings.ascii_compatible = false;
-    settings.compress_content_streams = true;
-    settings.validator = Validator::A2_B;
+    let settings = SerializeSettings {
+        compress_content_streams: true,
+        no_device_cs: false,
+        ascii_compatible: false,
+        xmp_metadata: true,
+        force_type3_fonts: false,
+        cmyk_profile: None,
+        validator: Validator::None,
+        enable_tagging: false,
+        pdf_version: PdfVersion::Pdf17,
+    };
 
     let mut document = krilla::Document::new_with(settings);
     let mut context = ExportContext::new();
@@ -64,16 +56,15 @@ pub fn pdf(typst_document: &Document) -> Vec<u8> {
         );
         let mut page = document.start_page_with(settings);
         let mut surface = page.surface();
-        handle_frame(&typst_page.frame, &mut surface, &mut context);
+        process_frame(&typst_page.frame, &mut surface, &mut context);
     }
-
-    println!("{:?}", context.other_tags);
 
     finish(document)
 }
 
 #[typst_macros::time(name = "finish document")]
 pub fn finish(document: krilla::Document) -> Vec<u8> {
+    // TODO: Don't unwrap
     document.finish().unwrap()
 }
 
@@ -83,7 +74,7 @@ pub fn handle_group(
     context: &mut ExportContext,
 ) {
     surface.push_transform(&convert_transform(group.transform));
-    handle_frame(&group.frame, surface, context);
+    process_frame(&group.frame, surface, context);
     surface.pop();
 }
 
@@ -98,6 +89,7 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
                 t.font.index(),
                 vec![],
             )
+                // TODO: DOn't unwrap
             .unwrap()
         })
         .clone();
@@ -110,10 +102,13 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
     let text = t.text.as_str();
     let size = t.size;
 
+    // TODO: Avoid creating vector?
+    let glyphs = t.glyphs.iter().map(|g| WrapperGlyph(g.clone())).collect::<Vec<_>>();
+
     surface.fill_glyphs(
         Point::from_xy(0.0, 0.0),
         fill,
-        &t.glyphs,
+        &glyphs,
         font.clone(),
         text,
         size.to_f32(),
@@ -125,7 +120,7 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
         surface.stroke_glyphs(
             Point::from_xy(0.0, 0.0),
             stroke,
-            &t.glyphs,
+            &glyphs,
             font.clone(),
             text,
             size.to_f32(),
@@ -133,16 +128,6 @@ pub fn handle_text(t: &TextItem, surface: &mut Surface, context: &mut ExportCont
             true,
         );
     }
-}
-
-
-fn encode_alpha(raster: &RasterImage) -> Vec<u8> {
-    let pixels: Vec<_> = raster
-        .dynamic()
-        .pixels()
-        .map(|(_, _, Rgba([_, _, _, a]))| a)
-        .collect();
-    pixels
 }
 
 #[typst_macros::time(name = "handle image")]
@@ -227,7 +212,7 @@ pub fn convert_path(path: &Path, builder: &mut PathBuilder) {
     }
 }
 
-pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportContext) {
+pub fn process_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportContext) {
     for (point, item) in frame.items() {
         surface.push_transform(&Transform::from_translate(
             point.x.to_f32(),
@@ -246,6 +231,34 @@ pub fn handle_frame(frame: &Frame, surface: &mut Surface, context: &mut ExportCo
         }
 
         surface.pop();
+    }
+}
+
+struct WrapperGlyph(Glyph);
+
+impl krilla::font::Glyph for WrapperGlyph {
+    fn glyph_id(&self) -> krilla::font::GlyphId {
+        krilla::font::GlyphId::new(self.0.id as u32)
+    }
+
+    fn text_range(&self) -> Range<usize> {
+        self.0.range.start as usize..self.0.range.end as usize
+    }
+
+    fn x_advance(&self) -> f32 {
+        self.0.x_advance.get() as f32
+    }
+
+    fn x_offset(&self) -> f32 {
+        self.0.x_offset.get() as f32
+    }
+
+    fn y_offset(&self) -> f32 {
+        0.0
+    }
+
+    fn y_advance(&self) -> f32 {
+        0.0
     }
 }
 
